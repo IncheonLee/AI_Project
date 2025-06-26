@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}홈{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h2 class="mb-0"><i class="fas fa-robot me-2"></i>AI 비서와 대화하기</h2>
+            </div>
+            <div class="card-body">
+                <div id="chat-container" class="mb-4">
+                    <div id="chat-messages" class="border rounded p-3 mb-3" style="height: 400px; overflow-y: auto;">
+                        <div class="ai-message">
+                            <div class="message-bubble">
+                                <p>안녕하세요! 저는 당신의 AI 비서입니다. 무엇을 도와드릴까요?</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="user-input" class="form-control" placeholder="메시지를 입력하세요...">
+                        <button id="send-button" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-1"></i>보내기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h3 class="mb-0"><i class="fas fa-sticky-note me-2"></i>최근 메모</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="recent-notes">
+                            <p class="text-center text-muted">최근 메모가 없습니다.</p>
+                            <a href="{{ url_for('notes') }}" class="btn btn-outline-info w-100">
+                                <i class="fas fa-plus me-1"></i>메모 작성하기
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h3 class="mb-0"><i class="fas fa-tasks me-2"></i>할 일 목록</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="recent-tasks">
+                            <p class="text-center text-muted">할 일이 없습니다.</p>
+                            <a href="{{ url_for('tasks') }}" class="btn btn-outline-success w-100">
+                                <i class="fas fa-plus me-1"></i>할 일 추가하기
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header bg-warning">
+                <h3 class="mb-0 text-dark"><i class="fas fa-cloud-sun me-2"></i>오늘의 날씨</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <form action="{{ url_for('weather') }}" method="post" class="mb-3">
+                            <div class="input-group">
+                                <input type="text" name="city" class="form-control" placeholder="도시 이름" required>
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="fas fa-search me-1"></i>검색
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="text-center text-muted">도시를 검색하여 날씨 정보를 확인하세요.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // 메시지 전송 함수
+        function sendMessage() {
+            const userInput = $('#user-input').val().trim();
+            if (userInput === '') return;
+            
+            // 사용자 메시지 표시
+            $('#chat-messages').append(`
+                <div class="user-message text-end">
+                    <div class="message-bubble bg-primary text-white">
+                        <p>${userInput}</p>
+                    </div>
+                </div>
+            `);
+            
+            // 입력 필드 초기화
+            $('#user-input').val('');
+            
+            // 스크롤을 맨 아래로 이동
+            $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+            
+            // 로딩 표시
+            $('#chat-messages').append(`
+                <div class="ai-message" id="loading-message">
+                    <div class="message-bubble">
+                        <p><i class="fas fa-spinner fa-spin"></i> 응답 중...</p>
+                    </div>
+                </div>
+            `);
+            
+            // API 요청
+            $.ajax({
+                url: '/chat',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ message: userInput }),
+                success: function(response) {
+                    // 로딩 메시지 제거
+                    $('#loading-message').remove();
+                    
+                    // AI 응답 표시
+                    $('#chat-messages').append(`
+                        <div class="ai-message">
+                            <div class="message-bubble">
+                                <p>${response.response}</p>
+                            </div>
+                        </div>
+                    `);
+                    
+                    // 스크롤을 맨 아래로 이동
+                    $('#chat-messages').scrollTop($('#chat-messages')[0].scrollHeight);
+                },
+                error: function(error) {
+                    // 로딩 메시지 제거
+                    $('#loading-message').remove();
+                    
+                    // 오류 메시지 표시
+                    $('#chat-messages').append(`
+                        <div class="ai-message">
+                            <div class="message-bubble bg-danger text-white">
+                                <p>오류가 발생했습니다. 다시 시도해 주세요.</p>
+                            </div>
+                        </div>
+                    `);
+                    
+                    console.error('Error:', error);
+                }
+            });
+        }
+        
+        // 보내기 버튼 클릭 이벤트
+        $('#send-button').click(function() {
+            sendMessage();
+        });
+        
+        // 엔터 키 이벤트
+        $('#user-input').keypress(function(e) {
+            if (e.which === 13) {
+                sendMessage();
+            }
+        });
+        
+        // 최근 메모 불러오기
+        $.get('/notes', function(data) {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(data, 'text/html');
+            const notes = $(htmlDoc).find('.note-item').slice(0, 3);
+            
+            if (notes.length > 0) {
+                $('#recent-notes').html('');
+                notes.each(function() {
+                    $('#recent-notes').append($(this).clone());
+                });
+                $('#recent-notes').append(`
+                    <a href="{{ url_for('notes') }}" class="btn btn-outline-info w-100 mt-3">
+                        <i class="fas fa-external-link-alt me-1"></i>모든 메모 보기
+                    </a>
+                `);
+            }
+        });
+        
+        // 최근 할 일 불러오기
+        $.get('/tasks', function(data) {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(data, 'text/html');
+            const tasks = $(htmlDoc).find('.task-item').slice(0, 3);
+            
+            if (tasks.length > 0) {
+                $('#recent-tasks').html('');
+                tasks.each(function() {
+                    $('#recent-tasks').append($(this).clone());
+                });
+                $('#recent-tasks').append(`
+                    <a href="{{ url_for('tasks') }}" class="btn btn-outline-success w-100 mt-3">
+                        <i class="fas fa-external-link-alt me-1"></i>모든 할 일 보기
+                    </a>
+                `);
+            }
+        });
+    });
+</script>
+{% endblock %} 
